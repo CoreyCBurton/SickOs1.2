@@ -51,7 +51,7 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 
 TRACEROUTE
 ```
-#Brute attack
+# Brute attack
 
 Using ```gobuster dir --url http://192.168.1.142 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ```, You can find the directories of the website. Here is what it returned below.
 
