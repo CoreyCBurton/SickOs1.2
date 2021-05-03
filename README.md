@@ -83,8 +83,8 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 2021/04/22 13:23:05 Finished
 ===============================================================
 ```
-Looks like the directory that gobuster found was ```/test``` and ```/%7Echeckout%7E```. We can access the directory by typing it in the search bar such ass ``192.168.1.142/test``
-<img width="386" alt="Screen Shot 2021-04-22 at 8 59 57 PM" src="https://user-images.githubusercontent.com/81980702/115807226-d699b780-a3ad-11eb-8c69-98e43808be09.png">
+Looks like the directory that gobuster found was ```/test``` and ```/%7Echeckout%7E```. We can access the directory by typing it in the search bar such as ``192.168.1.142/test``
+> <img width="386" alt="Screen Shot 2021-04-22 at 8 59 57 PM" src="https://user-images.githubusercontent.com/81980702/115807226-d699b780-a3ad-11eb-8c69-98e43808be09.png">
 
 
 # Finding Explouts 
